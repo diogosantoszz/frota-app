@@ -1,0 +1,408 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { format, parseISO } from 'date-fns';
+import { pt } from 'date-fns/locale';
+import { Car, Users, FileText, Calendar } from 'lucide-react';
+
+export default function ReportsPage() {
+  const [vehicles, setVehicles] = useState([]);
+  const [maintenance, setMaintenance] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Carregar dados
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+      try {
+        // Carregar veículos
+        const vehiclesResponse = await fetch('/api/vehicles');
+        const vehiclesData = await vehiclesResponse.json();
+        
+        // Carregar manutenções
+        const maintenanceResponse = await fetch('/api/maintenance');
+        const maintenanceData = await maintenanceResponse.json();
+        
+        setVehicles(vehiclesData);
+        setMaintenance(maintenanceData);
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, []);
+  
+  // Relatório por empresa
+  const companyReport = () => {
+    const report = {};
+    
+    // Inicializar relatório
+    vehicles.forEach(vehicle => {
+      if (!report[vehicle.company]) {
+        report[vehicle.company] = {
+          count: 0,
+          cost: 0,
+          upcomingInspections: 0,
+          overdueInspections: 0
+        };
+      }
+      
+      report[vehicle.company].count += 1;
+      
+      // Verificar status de inspeção
+      const nextInspection = new Date(vehicle.nextInspection);
+      const today = new Date();
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(today.getDate() + 30);
+      
+      if (nextInspection < today && vehicle.inspectionStatus !== "confirmada") {
+        report[vehicle.company].overdueInspections += 1;
+      } else if (nextInspection >= today && nextInspection <= thirtyDaysLater && vehicle.inspectionStatus === "pendente") {
+        report[vehicle.company].upcomingInspections += 1;
+      }
+    });
+    
+    // Adicionar custos de manutenção
+    maintenance.forEach(record => {
+      const vehicle = vehicles.find(v => v._id === record.vehicleId);
+      if (vehicle && report[vehicle.company]) {
+        report[vehicle.company].cost += record.cost;
+      }
+    });
+    
+    return report;
+  };
+  
+  // Relatório por veículo
+  const vehicleReport = () => {
+    return vehicles.map(vehicle => {
+      const vehicleMaintenance = maintenance.filter(m => m.vehicleId === vehicle._id);
+      const totalCost = vehicleMaintenance.reduce((sum, m) => sum + m.cost, 0);
+      
+      // Calcular dias até a próxima inspeção
+      const nextInspection = new Date(vehicle.nextInspection);
+      const today = new Date();
+      const daysUntil = Math.ceil((nextInspection - today) / (1000 * 60 * 60 * 24));
+      
+      return {
+        ...vehicle,
+        maintenanceCount: vehicleMaintenance.length,
+        totalCost,
+        daysUntil
+      };
+    });
+  };
+  
+  // Relatório mensal
+  const monthlyReport = () => {
+    const report = {};
+    
+    maintenance.forEach(record => {
+      const date = new Date(record.date);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!report[monthYear]) {
+        report[monthYear] = {
+          count: 0,
+          cost: 0,
+          inspections: 0,
+          repairs: 0,
+          services: 0
+        };
+      }
+      
+      report[monthYear].count += 1;
+      report[monthYear].cost += record.cost;
+      
+      if (record.type === "Inspeção") {
+        report[monthYear].inspections += 1;
+      } else if (record.type === "Reparação") {
+        report[monthYear].repairs += 1;
+      } else if (record.type === "Revisão") {
+        report[monthYear].services += 1;
+      }
+    });
+    
+    // Ordenar por data
+    return Object.entries(report)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([monthYear, data]) => {
+        const [year, month] = monthYear.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+        
+        return {
+          monthYear,
+          monthName: format(date, 'MMMM yyyy', { locale: pt }),
+          ...data
+        };
+      });
+  };
+  
+  if (isLoading) return <div>Carregando...</div>;
+  
+  const companies = companyReport();
+  const vehiclesReport = vehicleReport();
+  const months = monthlyReport();
+  
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold mb-6">Relatórios</h1>
+      
+      <Card>
+        <CardHeader className="bg-blue-50">
+          <CardTitle className="flex items-center">
+            <Users className="mr-2" size={20} /> Relatório por Empresa
+          </CardTitle>
+          <CardDescription>
+            Veículos e custos agrupados por empresa
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Empresa
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Veículos
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Inspeções Próximas
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Inspeções Atrasadas
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Custo Total (€)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {Object.entries(companies).map(([company, data]) => (
+                  <tr key={company} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {company}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {data.count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {data.upcomingInspections > 0 ? (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                          {data.upcomingInspections}
+                        </span>
+                      ) : data.upcomingInspections}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {data.overdueInspections > 0 ? (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                          {data.overdueInspections}
+                        </span>
+                      ) : data.overdueInspections}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                      {data.cost.toFixed(2)} €
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="font-bold bg-gray-50">
+                  <td className="px-6 py-4">Total</td>
+                  <td className="px-6 py-4 text-center">{vehicles.length}</td>
+                  <td className="px-6 py-4 text-center">
+                    {vehicles.filter(v => {
+                      const nextInspection = new Date(v.nextInspection);
+                      const today = new Date();
+                      const thirtyDaysLater = new Date();
+                      thirtyDaysLater.setDate(today.getDate() + 30);
+                      return nextInspection >= today && 
+                             nextInspection <= thirtyDaysLater && 
+                             v.inspectionStatus === "pendente";
+                    }).length}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    {vehicles.filter(v => {
+                      const nextInspection = new Date(v.nextInspection);
+                      const today = new Date();
+                      return nextInspection < today && v.inspectionStatus !== "confirmada";
+                    }).length}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {maintenance
+                      .reduce((sum, record) => sum + record.cost, 0)
+                      .toFixed(2)} €
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="bg-green-50">
+          <CardTitle className="flex items-center">
+            <Car className="mr-2" size={20} /> Relatório por Veículo
+          </CardTitle>
+          <CardDescription>
+            Custos de manutenção por veículo
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Veículo
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Matrícula
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Responsável
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Manutenções
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Custo Total (€)
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Próxima Inspeção
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {vehiclesReport.map(vehicle => (
+                  <tr key={vehicle._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {vehicle.brand} {vehicle.model}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {vehicle.plate}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {vehicle.userName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {vehicle.maintenanceCount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                      {vehicle.totalCost.toFixed(2)} €
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <span 
+                        className={
+                          vehicle.inspectionStatus === "atrasada" 
+                            ? "text-red-500 font-semibold" 
+                            : vehicle.inspectionStatus === "pendente" && vehicle.daysUntil < 30
+                              ? "text-yellow-500 font-semibold"
+                              : "text-gray-500"
+                        }
+                      >
+                        {format(new Date(vehicle.nextInspection), 'dd/MM/yyyy', { locale: pt })}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="bg-purple-50">
+          <CardTitle className="flex items-center">
+            <Calendar className="mr-2" size={20} /> Manutenções por Mês
+          </CardTitle>
+          <CardDescription>
+            Histórico de manutenções e custos por mês
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Mês
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Inspeções
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reparações
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Revisões
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Custo Total (€)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {months.map(month => (
+                  <tr key={month.monthYear} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {month.monthName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {month.count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {month.inspections}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {month.repairs}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {month.services}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                      {month.cost.toFixed(2)} €
+                    </td>
+                  </tr>
+                ))}
+                
+                {months.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                      Sem dados de manutenção
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="font-bold bg-gray-50">
+                  <td className="px-6 py-4">Total</td>
+                  <td className="px-6 py-4 text-center">{maintenance.length}</td>
+                  <td className="px-6 py-4 text-center">{maintenance.filter(m => m.type === "Inspeção").length}</td>
+                  <td className="px-6 py-4 text-center">{maintenance.filter(m => m.type === "Reparação").length}</td>
+                  <td className="px-6 py-4 text-center">{maintenance.filter(m => m.type === "Revisão").length}</td>
+                  <td className="px-6 py-4 text-right">
+                    {maintenance
+                      .reduce((sum, record) => sum + record.cost, 0)
+                      .toFixed(2)} €
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
