@@ -1,10 +1,13 @@
+'use client';
+
 // components/layout/ResponsiveLayout.jsx
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Menu, X, Car, Wrench, FileText, 
-  Users, Settings, ChevronDown, LogOut 
+  Users, Settings
 } from 'lucide-react';
+import './responsive-layout.css'; // Vamos criar este arquivo CSS
 
 export default function ResponsiveLayout({ children, title }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -18,50 +21,50 @@ export default function ResponsiveLayout({ children, title }) {
   };
 
   const navItems = [
-    { href: '/', icon: <Settings className="w-5 h-5" />, label: 'Dashboard' },
-    { href: '/veiculos', icon: <Car className="w-5 h-5" />, label: 'Veículos' },
-    { href: '/manutencoes', icon: <Wrench className="w-5 h-5" />, label: 'Manutenções' },
-    { href: '/users', icon: <Users className="w-5 h-5" />, label: 'Usuários' },
-    { href: '/relatorios', icon: <FileText className="w-5 h-5" />, label: 'Relatórios' },
+    { href: '/', icon: <Settings className="nav-icon" />, label: 'Dashboard' },
+    { href: '/veiculos', icon: <Car className="nav-icon" />, label: 'Veículos' },
+    { href: '/manutencoes', icon: <Wrench className="nav-icon" />, label: 'Manutenções' },
+    { href: '/users', icon: <Users className="nav-icon" />, label: 'Usuários' },
+    { href: '/relatorios', icon: <FileText className="nav-icon" />, label: 'Relatórios' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="layout-container">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center">
-              <Link href="/" className="flex-shrink-0 flex items-center">
-                <span className="text-2xl font-bold text-blue-600">GestãoFrota</span>
+      <header className="header">
+        <div className="header-container">
+          <div className="header-content">
+            <div className="logo-container">
+              <Link href="/" className="logo-link">
+                <span className="logo-text">GestãoFrota</span>
               </Link>
             </div>
             
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-8">
+            <nav className="desktop-nav">
               {navItems.map((item) => (
                 <Link 
                   key={item.href}
                   href={item.href} 
-                  className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
+                  className="nav-link"
                 >
                   {item.icon}
-                  <span className="ml-2">{item.label}</span>
+                  <span className="nav-label">{item.label}</span>
                 </Link>
               ))}
             </nav>
             
             {/* Mobile menu button */}
-            <div className="md:hidden">
+            <div className="mobile-menu-button-container">
               <button
                 onClick={toggleMobileMenu}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                className="mobile-menu-button"
               >
                 <span className="sr-only">Abrir menu</span>
                 {isMobileMenuOpen ? (
-                  <X className="block h-6 w-6" />
+                  <X className="menu-icon" />
                 ) : (
-                  <Menu className="block h-6 w-6" />
+                  <Menu className="menu-icon" />
                 )}
               </button>
             </div>
@@ -69,17 +72,17 @@ export default function ResponsiveLayout({ children, title }) {
         </div>
 
         {/* Mobile menu */}
-        <div className={`md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
-          <div className="pt-2 pb-3 space-y-1">
+        <div className={`mobile-menu ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+          <div className="mobile-menu-items">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                className="mobile-nav-link"
                 onClick={closeMobileMenu}
               >
                 {item.icon}
-                <span className="ml-3">{item.label}</span>
+                <span className="mobile-nav-label">{item.label}</span>
               </Link>
             ))}
           </div>
@@ -87,11 +90,11 @@ export default function ResponsiveLayout({ children, title }) {
       </header>
 
       {/* Main content */}
-      <main className="flex-grow p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="main-content">
+        <div className="content-container">
           {title && (
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <div className="page-title-container">
+              <h1 className="page-title">{title}</h1>
             </div>
           )}
           {children}
@@ -99,9 +102,9 @@ export default function ResponsiveLayout({ children, title }) {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white shadow-sm mt-auto py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
+      <footer className="footer">
+        <div className="footer-container">
+          <p className="copyright">
             &copy; {new Date().getFullYear()} GestãoFrota. Todos os direitos reservados.
           </p>
         </div>
