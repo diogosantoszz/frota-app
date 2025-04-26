@@ -17,7 +17,7 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
   const [filter, setFilter] = useState({
-    status: 'pending',
+    status: 'all', // Modificado para mostrar todas as tarefas por padrão
     vehicleId: '',
     priority: ''
   });
@@ -41,7 +41,7 @@ export default function TasksPage() {
         let url = '/api/tasks';
         const params = new URLSearchParams();
         
-        if (filter.status) {
+        if (filter.status && filter.status !== 'all') {
           params.append('status', filter.status);
         }
         if (filter.vehicleId) {
@@ -88,16 +88,11 @@ export default function TasksPage() {
       });
       
       if (response.ok) {
-        if (filter.status === 'pending') {
-          // Se estamos mostrando apenas tarefas pendentes, remover a tarefa da lista
-          setTasks(tasks.filter(task => task._id !== taskId));
-        } else {
-          // Senão, atualizar o status da tarefa na lista
-          const updatedTask = await response.json();
-          setTasks(tasks.map(task => 
-            task._id === taskId ? updatedTask : task
-          ));
-        }
+        // Atualizar a tarefa na lista
+        const updatedTask = await response.json();
+        setTasks(tasks.map(task => 
+          task._id === taskId ? updatedTask : task
+        ));
       }
     } catch (error) {
       console.error('Erro ao concluir tarefa:', error);
@@ -145,7 +140,7 @@ export default function TasksPage() {
         
         // Adicionar à lista de tarefas se corresponder aos filtros atuais
         if (
-          (!filter.status || newTask.status === filter.status) &&
+          (filter.status === 'all' || newTask.status === filter.status) &&
           (!filter.vehicleId || newTask.vehicleId === filter.vehicleId) &&
           (!filter.priority || newTask.priority === filter.priority)
         ) {
@@ -232,7 +227,7 @@ export default function TasksPage() {
                 value={filter.status}
                 onChange={(e) => setFilter({...filter, status: e.target.value})}
               >
-                <option value="">Todos</option>
+                <option value="all">Todos</option>
                 <option value="pending">Pendentes</option>
                 <option value="completed">Concluídas</option>
               </select>

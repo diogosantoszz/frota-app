@@ -2,7 +2,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { Check, X, Edit, Clock, AlertCircle, Calendar, Tag } from 'lucide-react';
+import { Check, X, Edit, Clock, AlertCircle, Calendar, Tag, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -37,7 +37,7 @@ export default function TaskList({
   if (!tasks || tasks.length === 0) {
     return (
       <div className="text-center py-8 bg-white rounded-lg shadow">
-        <p className="text-gray-500">Nenhuma tarefa pendente encontrada.</p>
+        <p className="text-gray-500">Nenhuma tarefa encontrada.</p>
       </div>
     );
   }
@@ -56,6 +56,12 @@ export default function TaskList({
                      task.category === 'repair' ? 'Reparação' : 
                      task.category === 'inspection' ? 'Inspeção' : 'Outro'}
                   </span>
+                  
+                  {task.status === 'completed' && (
+                    <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                      Concluída {task.completedAt && `em ${format(new Date(task.completedAt), 'dd/MM/yyyy', { locale: pt })}`}
+                    </span>
+                  )}
                 </div>
                 
                 <h3 className="font-medium text-gray-900">{task.title}</h3>
@@ -72,7 +78,7 @@ export default function TaskList({
                     </Link>
                   )}
                   
-                  <span className={`inline-flex items-center ${isTaskOverdue(task.dueDate) ? 'text-red-600 font-medium' : ''}`}>
+                  <span className={`inline-flex items-center ${task.status !== 'completed' && isTaskOverdue(task.dueDate) ? 'text-red-600 font-medium' : ''}`}>
                     <Calendar className="h-3.5 w-3.5 mr-1" />
                     {format(new Date(task.dueDate), 'dd/MM/yyyy', { locale: pt })}
                   </span>
@@ -121,24 +127,18 @@ export default function TaskList({
                     >
                       <Check size={16} />
                     </Button>
-                    
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onDelete(task._id)}
-                      title="Excluir"
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <X size={16} />
-                    </Button>
                   </>
                 )}
                 
-                {task.status === 'completed' && (
-                  <span className="text-green-600 text-sm font-medium">
-                    Concluída
-                  </span>
-                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onDelete(task._id)}
+                  title="Excluir"
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash size={16} />
+                </Button>
               </div>
             </div>
           </li>
