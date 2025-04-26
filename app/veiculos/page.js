@@ -67,92 +67,98 @@ export default function VehiclesPage() {
       
       <div className="bg-white shadow overflow-hidden rounded-lg">
         <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Matrícula
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Marca/Modelo
-		</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Primeira Matrícula
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Empresa
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsável
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Próxima Inspeção
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredVehicles.map(vehicle => (
-                <tr key={vehicle._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {vehicle.plate}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {vehicle.brand} {vehicle.model}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(new Date(vehicle.firstRegistrationDate), 'dd/MM/yyyy', { locale: pt })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {vehicle.company}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {vehicle.userName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(new Date(vehicle.nextInspection), 'dd/MM/yyyy', { locale: pt })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span 
-                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        vehicle.inspectionStatus === "pendente" 
-                          ? "bg-yellow-100 text-yellow-800"
-                          : vehicle.inspectionStatus === "atrasada"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {vehicle.inspectionStatus === "pendente" 
-                        ? "Pendente" 
+        <table className="min-w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Matrícula
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Marca/Modelo
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Primeira Matrícula
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Empresa
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Responsável
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Quilometragem
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Próxima Inspeção
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Ações
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredVehicles.map(vehicle => (
+              <tr key={vehicle._id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {vehicle.plate}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {vehicle.brand} {vehicle.model}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {format(new Date(vehicle.firstRegistrationDate), 'dd/MM/yyyy', { locale: pt })}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {vehicle.company}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {vehicle.userName}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                  {vehicle.currentMileage?.toLocaleString() || '0'} km
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {format(new Date(vehicle.nextInspection), 'dd/MM/yyyy', { locale: pt })}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span 
+                    className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      vehicle.inspectionStatus === "pendente" 
+                        ? "bg-yellow-100 text-yellow-800"
                         : vehicle.inspectionStatus === "atrasada"
-                          ? "Atrasada" 
-                          : "Confirmada"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link href={`/veiculos/${vehicle._id}`}>
-                      <Button variant="secondary" size="sm">
-                        Detalhes
-                      </Button>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              
-              {filteredVehicles.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
-                    Nenhum veículo encontrado
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                          ? "bg-red-100 text-red-800"
+                          : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {vehicle.inspectionStatus === "pendente" 
+                      ? "Pendente" 
+                      : vehicle.inspectionStatus === "atrasada"
+                        ? "Atrasada" 
+                        : "Confirmada"}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <Link href={`/veiculos/${vehicle._id}`}>
+                    <Button variant="secondary" size="sm">
+                      Detalhes
+                    </Button>
+                  </Link>
+                </td>
+              </tr>
+            ))}
+            
+            {filteredVehicles.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
+                  Nenhum veículo encontrado
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
         </div>
       </div>
     </div>

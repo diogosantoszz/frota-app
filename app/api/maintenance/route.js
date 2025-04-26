@@ -1,3 +1,4 @@
+// app/api/maintenance/route.js - Atualizar para incluir atualização da quilometragem do veículo
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -38,7 +39,26 @@ export async function POST(request) {
     data.createdAt = new Date();
     data.updatedAt = new Date();
     
+    // Inserir a manutenção
     const result = await db.collection("maintenance").insertOne(data);
+    
+    // Se foi fornecida uma quilometragem, atualizar a quilometragem atual do veículo
+    if (data.mileage && data.vehicleId) {
+      // Converter a quilometragem para número
+      const mileage = parseInt(data.mileage, 10);
+      
+      if (!isNaN(mileage)) {
+        await db.collection("vehicles").updateOne(
+          { _id: new ObjectId(data.vehicleId) },
+          { 
+            $set: { 
+              currentMileage: mileage,
+              updatedAt: new Date()
+            } 
+          }
+        );
+      }
+    }
     
     return NextResponse.json({ 
       _id: result.insertedId,

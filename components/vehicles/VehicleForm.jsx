@@ -1,3 +1,4 @@
+// components/vehicles/VehicleForm.jsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,13 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
     firstRegistrationDate: '',
     company: '',
     userId: '',
-    lastInspection: ''
+    lastInspection: '',
+    // Novos campos
+    frontTires: '',
+    rearTires: '',
+    initialMileage: '',
+    currentMileage: '',
+    lastInspectionMileage: ''
   });
   
   // Carregar usuários
@@ -31,7 +38,7 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
     fetchUsers();
   }, []);
   
-   // Preencher form com dados iniciais se disponíveis
+  // Preencher form com dados iniciais se disponíveis
   useEffect(() => {
     if (initialData) {
       // Formatar datas para o formato esperado pelos inputs
@@ -39,7 +46,13 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
         ...initialData,
         firstRegistrationDate: initialData.firstRegistrationDate ? new Date(initialData.firstRegistrationDate).toISOString().split('T')[0] : '',
         lastInspection: initialData.lastInspection ? new Date(initialData.lastInspection).toISOString().split('T')[0] : '',
-        nextInspection: initialData.nextInspection ? new Date(initialData.nextInspection).toISOString().split('T')[0] : ''
+        nextInspection: initialData.nextInspection ? new Date(initialData.nextInspection).toISOString().split('T')[0] : '',
+        // Garantir que os novos campos existam
+        frontTires: initialData.frontTires || '',
+        rearTires: initialData.rearTires || '',
+        initialMileage: initialData.initialMileage || 0,
+        currentMileage: initialData.currentMileage || 0,
+        lastInspectionMileage: initialData.lastInspectionMileage || 0
       };
       setFormData(formattedData);
     }
@@ -47,10 +60,20 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
   
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Converter campos numéricos para número
+    if (['initialMileage', 'currentMileage', 'lastInspectionMileage'].includes(name)) {
+      const numValue = parseInt(value, 10);
+      setFormData(prev => ({
+        ...prev,
+        [name]: isNaN(numValue) ? '' : numValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
   
   const handleSubmit = (e) => {
@@ -66,6 +89,18 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
       userEmail: selectedUser ? selectedUser.email : ''
     };
     
+    // Se for um novo veículo e a quilometragem atual não estiver definida,
+    // usar a quilometragem inicial como a atual
+    if (!isEditing && submitData.initialMileage && !submitData.currentMileage) {
+      submitData.currentMileage = submitData.initialMileage;
+    }
+    
+    // Se for um novo veículo e a quilometragem da última inspeção não estiver definida,
+    // usar a quilometragem atual como a da última inspeção
+    if (!isEditing && submitData.currentMileage && !submitData.lastInspectionMileage) {
+      submitData.lastInspectionMileage = submitData.currentMileage;
+    }
+    
     onSubmit(submitData);
   };
   
@@ -77,7 +112,7 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Matrícula *</label>
               <input 
@@ -154,6 +189,58 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
                 ))}
               </select>
             </div>
+            
+            {/* Novos campos de pneus */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Medida dos Pneus Dianteiros</label>
+              <input 
+                type="text" 
+                name="frontTires"
+                className="w-full p-2 border rounded"
+                value={formData.frontTires}
+                onChange={handleChange}
+                placeholder="Ex: 205/55 R16"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Medida dos Pneus Traseiros</label>
+              <input 
+                type="text" 
+                name="rearTires"
+                className="w-full p-2 border rounded"
+                value={formData.rearTires}
+                onChange={handleChange}
+                placeholder="Ex: 205/55 R16"
+              />
+            </div>
+            
+            {/* Novos campos de quilometragem */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Quilometragem Inicial</label>
+              <input 
+                type="number" 
+                name="initialMileage"
+                className="w-full p-2 border rounded"
+                value={formData.initialMileage}
+                onChange={handleChange}
+                placeholder="Quilometragem quando adicionado ao sistema"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Quilometragem Atual</label>
+              <input 
+                type="number" 
+                name="currentMileage"
+                className="w-full p-2 border rounded"
+                value={formData.currentMileage}
+                onChange={handleChange}
+                placeholder="Quilometragem atual"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {!isEditing && "Se não informada, será usada a quilometragem inicial"}
+              </p>
+            </div>
+            
             <div>
               <label className="block text-sm font-medium mb-1">Data da Última Inspeção (opcional)</label>
               <input 
@@ -165,6 +252,21 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
               />
               <p className="text-xs text-gray-500 mt-1">
                 Se não informada, será calculada automaticamente baseada na data da primeira matrícula
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Quilometragem na Última Inspeção</label>
+              <input 
+                type="number" 
+                name="lastInspectionMileage"
+                className="w-full p-2 border rounded"
+                value={formData.lastInspectionMileage}
+                onChange={handleChange}
+                placeholder="Quilometragem na última inspeção"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {!isEditing && "Se não informada, será usada a quilometragem atual"}
               </p>
             </div>
           </div>
@@ -179,15 +281,10 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
           </Button>
           <Button 
             type="submit"
+            className="bg-blue-500 text-white"
           >
-            {initialData ? 'Atualizar' : 'Adicionar'} Veículo
+            {isEditing ? 'Atualizar' : 'Adicionar'} Veículo
           </Button>
-  <Button 
-    type="submit"
-    className="bg-blue-500 text-white"
-  >
-    {isEditing ? 'Atualizar' : 'Adicionar'} Veículo
-  </Button>
         </CardFooter>
       </form>
     </Card>

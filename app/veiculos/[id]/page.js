@@ -4,11 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash, CheckCircle, Mail, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Edit, Trash, CheckCircle, Mail, ArrowLeft, AlertTriangle, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import Link from 'next/link';
 import VehicleForm from '@/components/vehicles/VehicleForm';
+import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
+import { calculateAverageKmPerYear, calculateKmSinceLastInspection } from '@/lib/utils/mileage-calculator';
+import TaskList from '@/components/tasks/TaskList';
+import TaskForm from '@/components/tasks/TaskForm';
 
 export default function VehicleDetailsPage({ params }) {
   const router = useRouter();
@@ -27,8 +31,12 @@ export default function VehicleDetailsPage({ params }) {
     description: '',
     cost: ''
   });
-  const [notification, setNotification] = useState(null);
-  
+const [notification, setNotification] = useState(null);
+const [tasks, setTasks] = useState([]);
+const [showTaskForm, setShowTaskForm] = useState(false);
+const [editingTask, setEditingTask] = useState(null);
+
+
   // Carregar dados do veículo e manutenções
   useEffect(() => {
     async function fetchData() {
@@ -44,6 +52,13 @@ export default function VehicleDetailsPage({ params }) {
         // Carregar manutenções
         const maintenanceResponse = await fetch(`/api/maintenance/vehicle/${id}`);
         const maintenanceData = await maintenanceResponse.json();
+        
+        // Carregar tarefas pendentes
+        const tasksResponse = await fetch(`/api/tasks/vehicle/${id}?status=pending`);
+        if (tasksResponse.ok) {
+          const tasksData = await tasksResponse.json();
+          setTasks(tasksData);
+        }
         
         setVehicle(vehicleData);
         setMaintenance(maintenanceData);
@@ -131,55 +146,47 @@ export default function VehicleDetailsPage({ params }) {
     }
   };
   
-  // Função para adicionar manutenção
-  const handleAddMaintenance = async (e) => {
-    e.preventDefault();
+// Função para adicionar manutenção
+const handleAddMaintenance = async (formData) => {
+  try {
+    // Agora formData já é o objeto com os dados do formulário
+    // Não precisamos fazer e.preventDefault() aqui
     
-    try {
-      const maintenanceData = {
-        ...newMaintenance,
-        vehicleId: id,
-        cost: parseFloat(newMaintenance.cost)
-      };
+    const maintenanceData = {
+      ...formData,
+      vehicleId: id
+    };
+    
+    const response = await fetch('/api/maintenance', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(maintenanceData),
+    });
+    
+    if (response.ok) {
+      const addedMaintenance = await response.json();
       
-      const response = await fetch('/api/maintenance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(maintenanceData),
-      });
+      // Atualizar a lista de manutenções
+      setMaintenance([addedMaintenance, ...maintenance]);
       
-      if (response.ok) {
-        const addedMaintenance = await response.json();
-        
-        // Atualizar a lista de manutenções
-        setMaintenance([addedMaintenance, ...maintenance]);
-        
-        // Resetar o formulário
-        setNewMaintenance({
-          date: new Date().toISOString().split('T')[0],
-          type: 'Revisão',
-          description: '',
-          cost: ''
-        });
-        
-        setNotification({
-          type: 'success',
-          message: 'Manutenção adicionada com sucesso!'
-        });
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao adicionar manutenção');
-      }
-    } catch (error) {
-      console.error('Erro ao adicionar manutenção:', error);
       setNotification({
-        type: 'error',
-        message: error.message || 'Ocorreu um erro ao adicionar a manutenção'
+        type: 'success',
+        message: 'Manutenção adicionada com sucesso!'
       });
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erro ao adicionar manutenção');
     }
-  };
+  } catch (error) {
+    console.error('Erro ao adicionar manutenção:', error);
+    setNotification({
+      type: 'error',
+      message: error.message || 'Ocorreu um erro ao adicionar a manutenção'
+    });
+  }
+};
   
   // Função para excluir manutenção
   const handleDeleteMaintenance = async (maintenanceId) => {
@@ -269,6 +276,133 @@ export default function VehicleDetailsPage({ params }) {
   const daysUntil = getDaysUntilInspection(vehicle.nextInspection);
   const isOverdue = daysUntil < 0;
   
+
+  const handleAddTask = async (taskData) => {
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+      
+      if (response.ok) {
+        const newTask = await response.json();
+        setTasks([...tasks, newTask]);
+        setShowTaskForm(false);
+        
+        setNotification({
+          type: 'success',
+          message: 'Tarefa adicionada com sucesso!'
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao adicionar tarefa');
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar tarefa:', error);
+      setNotification({
+        type: 'error',
+        message: error.message || 'Ocorreu um erro ao adicionar a tarefa'
+      });
+    }
+  };
+  
+  const handleMarkTaskComplete = async (taskId) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'completed',
+          completedAt: new Date().toISOString()
+        }),
+      });
+      
+      if (response.ok) {
+        setTasks(tasks.filter(task => task._id !== taskId));
+        
+        setNotification({
+          type: 'success',
+          message: 'Tarefa concluída com sucesso!'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao concluir tarefa:', error);
+      setNotification({
+        type: 'error',
+        message: 'Ocorreu um erro ao concluir a tarefa'
+      });
+    }
+  };
+  
+  const handleDeleteTask = async (taskId) => {
+    if (confirm('Tem certeza que deseja excluir esta tarefa?')) {
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          setTasks(tasks.filter(task => task._id !== taskId));
+          
+          setNotification({
+            type: 'success',
+            message: 'Tarefa excluída com sucesso!'
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao excluir tarefa:', error);
+        setNotification({
+          type: 'error',
+          message: 'Ocorreu um erro ao excluir a tarefa'
+        });
+      }
+    }
+  };
+  
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setShowTaskForm(true);
+  };
+  
+  const handleUpdateTask = async (updatedData) => {
+    try {
+      const response = await fetch(`/api/tasks/${editingTask._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+      
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(tasks.map(task => 
+          task._id === updatedTask._id ? updatedTask : task
+        ));
+        
+        setEditingTask(null);
+        setShowTaskForm(false);
+        
+        setNotification({
+          type: 'success',
+          message: 'Tarefa atualizada com sucesso!'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa:', error);
+      setNotification({
+        type: 'error',
+        message: 'Ocorreu um erro ao atualizar a tarefa'
+      });
+    }
+  };
+
+
   return (
     <div>
       {notification && (
@@ -363,92 +497,105 @@ export default function VehicleDetailsPage({ params }) {
                   <span className="font-medium">Email:</span>
                   <span>{vehicle.userEmail}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Última Inspeção:</span>
-                  <span>
-                    {vehicle.lastInspection 
-                      ? format(new Date(vehicle.lastInspection), 'dd/MM/yyyy', { locale: pt })
-                      : 'Não realizada'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Próxima Inspeção:</span>
-                  <span className={isOverdue ? "text-red-500 font-semibold" : ""}>
-                    {format(new Date(vehicle.nextInspection), 'dd/MM/yyyy', { locale: pt })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Status da Inspeção:</span>
-                  <span 
-                    className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      vehicle.inspectionStatus === "pendente" 
-                        ? "bg-yellow-100 text-yellow-800"
-                        : vehicle.inspectionStatus === "atrasada"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {vehicle.inspectionStatus === "pendente" 
-                      ? "Pendente" 
-                      : vehicle.inspectionStatus === "atrasada"
-                        ? "Atrasada" 
-                        : "Confirmada"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">
-                    {isOverdue ? "Dias Atrasados:" : "Dias até a Inspeção:"}
-                  </span>
-                  <span className={
-                    isOverdue 
-                      ? "text-red-500 font-semibold" 
-                      : daysUntil < 15 
-                        ? "text-yellow-500 font-semibold"
-                        : ""
-                  }>
-                    {Math.abs(daysUntil)}
-                  </span>
+                
+                {/* Seção de pneus */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h4 className="font-semibold text-gray-700 mb-2">Informações dos Pneus</h4>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Pneus Dianteiros:</span>
+                    <span>{vehicle.frontTires || "Não especificado"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Pneus Traseiros:</span>
+                    <span>{vehicle.rearTires || "Não especificado"}</span>
+                  </div>
                 </div>
                 
-                {/* Botões de ação para inspeção */}
-                {vehicle.inspectionStatus !== "confirmada" && (
-                  <div className="mt-4">
-                    <Button 
-                      className="bg-green-500 text-white px-3 py-2 rounded mr-2"
-                      onClick={() => {
-                        const today = new Date().toISOString().split('T')[0];
-                        handleUpdateVehicle({
-                          ...vehicle,
-                          inspectionStatus: "confirmada",
-                          lastInspection: today
-                        });
-                      }}
-                    >
-                      <CheckCircle className="mr-2" size={16} />
-                      Confirmar Inspeção Realizada
-                    </Button>
-                    
-                    {!vehicle.emailSent && (
-                      <Button 
-                        variant="secondary"
-                        className="flex items-center"
-                        onClick={() => {
-                          handleUpdateVehicle({
-                            ...vehicle,
-                            emailSent: true
-                          });
-                          setNotification({
-                            type: 'success',
-                            message: `Email enviado para ${vehicle.userEmail}`
-                          });
-                        }}
-                      >
-                        <Mail className="mr-2" size={16} />
-                        Enviar Lembrete por Email
-                      </Button>
-                    )}
+                {/* Seção de quilometragem */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h4 className="font-semibold text-gray-700 mb-2">Informações de Quilometragem</h4>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Quilometragem Atual:</span>
+                    <span>{vehicle.currentMileage?.toLocaleString() || 0} km</span>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span className="font-medium">Quilometragem na Última Inspeção:</span>
+                    <span>{vehicle.lastInspectionMileage?.toLocaleString() || 0} km</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Média Anual:</span>
+                    <span>
+                      {calculateAverageKmPerYear(
+                        vehicle.currentMileage,
+                        vehicle.initialMileage || 0,
+                        vehicle.firstRegistrationDate
+                      ).toLocaleString()} km/ano
+                    </span>
+                  </div>
+                  {vehicle.lastInspection && (
+                    <div className="flex justify-between">
+                      <span className="font-medium">KM desde última inspeção:</span>
+                      <span>
+                        {(vehicle.currentMileage - vehicle.lastInspectionMileage).toLocaleString()} km
+                        ({calculateKmSinceLastInspection(
+                          vehicle.currentMileage,
+                          vehicle.lastInspectionMileage,
+                          vehicle.lastInspection
+                        ).toLocaleString()} km/mês)
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h4 className="font-semibold text-gray-700 mb-2">Informações de Inspeção</h4>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Última Inspeção:</span>
+                    <span>
+                      {vehicle.lastInspection 
+                        ? format(new Date(vehicle.lastInspection), 'dd/MM/yyyy', { locale: pt })
+                        : 'Não realizada'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Próxima Inspeção:</span>
+                    <span className={isOverdue ? "text-red-500 font-semibold" : ""}>
+                      {format(new Date(vehicle.nextInspection), 'dd/MM/yyyy', { locale: pt })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Status da Inspeção:</span>
+                    <span 
+                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        vehicle.inspectionStatus === "pendente" 
+                          ? "bg-yellow-100 text-yellow-800"
+                          : vehicle.inspectionStatus === "atrasada"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {vehicle.inspectionStatus === "pendente" 
+                        ? "Pendente" 
+                        : vehicle.inspectionStatus === "atrasada"
+                          ? "Atrasada" 
+                          : "Confirmada"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">
+                      {isOverdue ? "Dias Atrasados:" : "Dias até a Inspeção:"}
+                    </span>
+                    <span className={
+                      isOverdue 
+                        ? "text-red-500 font-semibold" 
+                        : daysUntil < 15 
+                          ? "text-yellow-500 font-semibold"
+                          : ""
+                    }>
+                      {Math.abs(daysUntil)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -458,62 +605,11 @@ export default function VehicleDetailsPage({ params }) {
               <CardTitle>Adicionar Manutenção</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddMaintenance}>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block mb-1">Data</label>
-                    <input 
-                      type="date" 
-                      className="w-full p-2 border rounded"
-                      value={newMaintenance.date}
-                      onChange={(e) => setNewMaintenance({...newMaintenance, date: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1">Tipo</label>
-                    <select 
-                      className="w-full p-2 border rounded"
-                      value={newMaintenance.type}
-                      onChange={(e) => setNewMaintenance({...newMaintenance, type: e.target.value})}
-                      required
-                    >
-                      <option value="Revisão">Revisão</option>
-                      <option value="Reparação">Reparação</option>
-                      <option value="Inspeção">Inspeção</option>
-                      <option value="Outro">Outro</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block mb-1">Descrição</label>
-                    <textarea 
-                      className="w-full p-2 border rounded"
-                      value={newMaintenance.description}
-                      onChange={(e) => setNewMaintenance({...newMaintenance, description: e.target.value})}
-                      rows={3}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1">Custo (€)</label>
-                    <input 
-                      type="number" 
-                      className="w-full p-2 border rounded"
-                      value={newMaintenance.cost}
-                      onChange={(e) => setNewMaintenance({...newMaintenance, cost: e.target.value})}
-                      step="0.01"
-                      min="0"
-                      required
-                    />
-                  </div>
-                  <Button 
-                    type="submit"
-                    className="w-full bg-blue-500 text-white"
-                  >
-                    Adicionar Manutenção
-                  </Button>
-                </div>
-              </form>
+              <MaintenanceForm
+                vehicleId={id}
+                onSubmit={handleAddMaintenance}
+                currentVehicleMileage={vehicle.currentMileage}
+              />
             </CardContent>
           </Card>
         </div>
@@ -613,6 +709,50 @@ export default function VehicleDetailsPage({ params }) {
         </CardContent>
       </Card>
       
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Tarefas Pendentes</CardTitle>
+          <Button 
+            onClick={() => {
+              setEditingTask(null);
+              setShowTaskForm(!showTaskForm);
+            }}
+            className="flex items-center"
+          >
+            {showTaskForm ? 'Cancelar' : (
+              <>
+                <Plus className="mr-2" size={16} />
+                Adicionar Tarefa
+              </>
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {showTaskForm && (
+            <div className="mb-6">
+              <TaskForm 
+                vehicleId={id}
+                onSubmit={editingTask ? handleUpdateTask : handleAddTask}
+                onCancel={() => {
+                  setShowTaskForm(false);
+                  setEditingTask(null);
+                }}
+                initialData={editingTask}
+                isEditing={!!editingTask}
+              />
+            </div>
+          )}
+          
+          <TaskList 
+            tasks={tasks}
+            showVehicle={false} // Não é necessário mostrar o veículo, já que estamos na página dele
+            onMarkComplete={handleMarkTaskComplete}
+            onEdit={handleEditTask}
+            onDelete={handleDeleteTask}
+          />
+        </CardContent>
+      </Card>
+
       {/* Modal de confirmação de exclusão */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

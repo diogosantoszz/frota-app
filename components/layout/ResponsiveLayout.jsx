@@ -5,9 +5,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Menu, X, Car, Wrench, FileText, 
-  Users, Settings
+  Users, Settings, CheckSquare
 } from 'lucide-react';
-import './responsive-layout.css'; // Vamos criar este arquivo CSS
+import './responsive-layout.css';
 
 export default function ResponsiveLayout({ children, title }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,7 +24,8 @@ export default function ResponsiveLayout({ children, title }) {
     { href: '/', icon: <Settings className="nav-icon" />, label: 'Dashboard' },
     { href: '/veiculos', icon: <Car className="nav-icon" />, label: 'Veículos' },
     { href: '/manutencoes', icon: <Wrench className="nav-icon" />, label: 'Manutenções' },
-    { href: '/users', icon: <Users className="nav-icon" />, label: 'Usuários' },
+    { href: '/tarefas', icon: <CheckSquare className="nav-icon" />, label: 'Tarefas' },
+    { href: '/users', icon: <Users className="nav-icon" />, label: 'Utilizadores' },
     { href: '/relatorios', icon: <FileText className="nav-icon" />, label: 'Relatórios' },
   ];
 

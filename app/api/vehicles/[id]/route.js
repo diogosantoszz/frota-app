@@ -1,3 +1,4 @@
+// app/api/vehicles/[id]/route.js - Atualizar a rota PATCH
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -40,6 +41,23 @@ export async function PATCH(request, { params }) {
     // Remover o _id do objeto de atualização se estiver presente
     if (data._id) {
       delete data._id;
+    }
+    
+    // Verificar se é uma atualização de inspeção confirmada
+    if (data.inspectionStatus === "confirmada") {
+      // Se for uma confirmação de inspeção, registrar a quilometragem atual como a quilometragem da inspeção
+      if (data.currentMileage && !data.lastInspectionMileage) {
+        data.lastInspectionMileage = data.currentMileage;
+      }
+    }
+    
+    // Converter data para formato Date se existir
+    if (data.lastInspection) {
+      data.lastInspection = new Date(data.lastInspection);
+    }
+    
+    if (data.nextInspection) {
+      data.nextInspection = new Date(data.nextInspection);
     }
     
     const result = await db

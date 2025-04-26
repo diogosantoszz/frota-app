@@ -1,3 +1,4 @@
+// app/api/vehicles/route.js - Atualizar a rota POST
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { calculateNextInspection } from '@/lib/utils/inspection-calculator';
@@ -62,6 +63,17 @@ export async function POST(request) {
     // Definir valores padrão
     data.inspectionStatus = data.inspectionStatus || 'pendente';
     data.emailSent = data.emailSent || false;
+    
+    // Definir valores padrão para novos campos
+    data.frontTires = data.frontTires || '';
+    data.rearTires = data.rearTires || '';
+    data.initialMileage = data.initialMileage || 0;
+    data.currentMileage = data.currentMileage || data.initialMileage || 0;
+    data.lastInspectionMileage = data.lastInspectionMileage || data.currentMileage || 0;
+    
+    // Adicionar timestamps
+    data.createdAt = new Date();
+    data.updatedAt = new Date();
     
     const result = await db.collection("vehicles").insertOne(data);
     

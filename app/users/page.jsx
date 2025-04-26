@@ -24,10 +24,10 @@ export default function UsersPage() {
         const data = await response.json();
         setUsers(data);
       } else {
-        console.error('Erro ao carregar usuários');
+        console.error('Erro ao carregar utilizadores');
       }
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+      console.error('Erro ao carregar utilizadores:', error);
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +56,7 @@ export default function UsersPage() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao adicionar usuário');
+        throw new Error(errorData.error || 'Erro ao adicionar utilizador');
       }
       
       // Atualizar a lista de usuários
@@ -83,14 +83,14 @@ export default function UsersPage() {
       } else {
         const errorData = await response.json();
         if (errorData.vehiclesCount) {
-          alert(`Não é possível excluir este usuário pois existem ${errorData.vehiclesCount} veículos associados a ele.`);
+          alert(`Não é possível excluir este utilizador pois existem ${errorData.vehiclesCount} veículos associados a ele.`);
         } else {
-          alert(`Erro ao excluir usuário: ${errorData.error || 'Erro desconhecido'}`);
+          alert(`Erro ao excluir utilizador: ${errorData.error || 'Erro desconhecido'}`);
         }
       }
     } catch (error) {
-      console.error('Erro ao excluir usuário:', error);
-      alert('Ocorreu um erro ao excluir o usuário');
+      console.error('Erro ao excluir utilizador:', error);
+      alert('Ocorreu um erro ao excluir o utilizador');
     }
   };
 
@@ -114,18 +114,18 @@ export default function UsersPage() {
         setEditingUser(null);
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao atualizar usuário');
+        throw new Error(errorData.error || 'Erro ao atualizar utilizador');
       }
     } catch (error) {
-      console.error('Erro ao atualizar usuário:', error);
-      alert(error.message || 'Ocorreu um erro ao atualizar o usuário');
+      console.error('Erro ao atualizar utilizador:', error);
+      alert(error.message || 'Ocorreu um erro ao atualizar o utilizador');
     }
   };
   
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Usuários Responsáveis</h1>
+        <h1 className="text-2xl font-bold">Utilizadores Responsáveis</h1>
         <Button 
           className="flex items-center"
           onClick={() => setShowForm(!showForm)}
@@ -133,7 +133,7 @@ export default function UsersPage() {
           {showForm ? 'Cancelar' : (
             <>
               <Plus className="mr-2" size={16} />
-              Adicionar Usuário
+              Adicionar Utilizador
             </>
           )}
         </Button>
@@ -159,7 +159,7 @@ export default function UsersPage() {
       </div>
       
       {isLoading ? (
-        <div className="text-center py-8">Carregando usuários...</div>
+        <div className="text-center py-8">A carregar utilizadores...</div>
       ) : (
         <div className="bg-white shadow overflow-hidden rounded-lg">
           <div className="overflow-x-auto">
@@ -231,7 +231,7 @@ export default function UsersPage() {
                 {filteredUsers.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                      Nenhum usuário encontrado
+                      Nenhum utilizador encontrado
                     </td>
                   </tr>
                 )}
@@ -245,7 +245,7 @@ export default function UsersPage() {
       {editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">Editar Usuário</h3>
+            <h3 className="text-lg font-bold mb-4">Editar Utilizador</h3>
             
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -305,8 +305,8 @@ export default function UsersPage() {
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
             <h3 className="text-lg font-bold mb-4">Confirmar Exclusão</h3>
             <p className="mb-6">
-              Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
-              Nota: Não é possível excluir usuários que estejam associados a veículos.
+              Tem certeza que deseja excluir este utilizador? Esta ação não pode ser desfeita.
+              Nota: Não é possível excluir utilizadores que estejam associados a veículos.
             </p>
             <div className="flex justify-end space-x-3">
               <Button 

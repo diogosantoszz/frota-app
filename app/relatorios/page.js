@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Car, Users, FileText, Calendar } from 'lucide-react';
+import { calculateAverageKmPerYear } from '@/lib/utils/mileage-calculator';
 
 export default function ReportsPage() {
   const [vehicles, setVehicles] = useState([]);
@@ -88,11 +89,19 @@ export default function ReportsPage() {
       const today = new Date();
       const daysUntil = Math.ceil((nextInspection - today) / (1000 * 60 * 60 * 24));
       
+      // Calcular média de km por ano
+      const kmPerYear = calculateAverageKmPerYear(
+        vehicle.currentMileage,
+        vehicle.initialMileage || 0,
+        vehicle.firstRegistrationDate
+      );
+      
       return {
         ...vehicle,
         maintenanceCount: vehicleMaintenance.length,
         totalCost,
-        daysUntil
+        daysUntil,
+        kmPerYear
       };
     });
   };
@@ -163,85 +172,76 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent className="pt-4">
           <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Empresa
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Veículos
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Inspeções Próximas
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Inspeções Atrasadas
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Custo Total (€)
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {Object.entries(companies).map(([company, data]) => (
-                  <tr key={company} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {company}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                      {data.count}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {data.upcomingInspections > 0 ? (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                          {data.upcomingInspections}
-                        </span>
-                      ) : data.upcomingInspections}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {data.overdueInspections > 0 ? (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                          {data.overdueInspections}
-                        </span>
-                      ) : data.overdueInspections}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                      {data.cost.toFixed(2)} €
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="font-bold bg-gray-50">
-                  <td className="px-6 py-4">Total</td>
-                  <td className="px-6 py-4 text-center">{vehicles.length}</td>
-                  <td className="px-6 py-4 text-center">
-                    {vehicles.filter(v => {
-                      const nextInspection = new Date(v.nextInspection);
-                      const today = new Date();
-                      const thirtyDaysLater = new Date();
-                      thirtyDaysLater.setDate(today.getDate() + 30);
-                      return nextInspection >= today && 
-                             nextInspection <= thirtyDaysLater && 
-                             v.inspectionStatus === "pendente";
-                    }).length}
+          <table className="min-w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Veículo
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Matrícula
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Responsável
+                </th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Manutenções
+                </th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Quilometragem
+                </th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Média Anual
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Custo Total (€)
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Próxima Inspeção
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {vehiclesReport.map(vehicle => (
+                <tr key={vehicle._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {vehicle.brand} {vehicle.model}
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    {vehicles.filter(v => {
-                      const nextInspection = new Date(v.nextInspection);
-                      const today = new Date();
-                      return nextInspection < today && v.inspectionStatus !== "confirmada";
-                    }).length}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {vehicle.plate}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    {maintenance
-                      .reduce((sum, record) => sum + record.cost, 0)
-                      .toFixed(2)} €
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {vehicle.userName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    {vehicle.maintenanceCount}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    {vehicle.currentMileage?.toLocaleString() || '0'} km
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    {vehicle.kmPerYear.toLocaleString()} km/ano
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                    {vehicle.totalCost.toFixed(2)} €
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <span 
+                      className={
+                        vehicle.inspectionStatus === "atrasada" 
+                          ? "text-red-500 font-semibold" 
+                          : vehicle.inspectionStatus === "pendente" && vehicle.daysUntil < 30
+                            ? "text-yellow-500 font-semibold"
+                            : "text-gray-500"
+                      }
+                    >
+                      {format(new Date(vehicle.nextInspection), 'dd/MM/yyyy', { locale: pt })}
+                    </span>
                   </td>
                 </tr>
-              </tfoot>
-            </table>
+              ))}
+            </tbody>
+          </table>
           </div>
         </CardContent>
       </Card>
