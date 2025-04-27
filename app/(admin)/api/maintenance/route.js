@@ -1,7 +1,8 @@
-// app/api/maintenance/route.js - Atualizar para incluir atualização da quilometragem do veículo
+// app/api/maintenance/route.js
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { sendMaintenanceNotification } from '@/lib/email-service';
 
 // GET - Obter todas as manutenções
 export async function GET() {
@@ -43,6 +44,7 @@ export async function POST(request) {
     const result = await db.collection("maintenance").insertOne(data);
     
     // Se foi fornecida uma quilometragem, atualizar a quilometragem atual do veículo
+    let vehicle = null;
     if (data.mileage && data.vehicleId) {
       // Converter a quilometragem para número
       const mileage = parseInt(data.mileage, 10);
@@ -57,6 +59,19 @@ export async function POST(request) {
             } 
           }
         );
+        
+        // Obter o veículo atualizado
+        vehicle = await db.collection("vehicles").findOne({ _id: new ObjectId(data.vehicleId) });
+      }
+    }
+    
+    // Se temos o veículo, enviar notificação sobre a nova manutenção
+    if (vehicle) {
+      try {
+        await sendMaintenanceNotification({ ...data, _id: result.insertedId }, vehicle);
+      } catch (notificationError) {
+        console.error('Erro ao enviar notificação de manutenção:', notificationError);
+        // Não interromper o fluxo se a notificação falhar
       }
     }
     

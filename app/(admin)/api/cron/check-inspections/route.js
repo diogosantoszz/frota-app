@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { sendInspectionReminder } from '@/lib/email-service';
 
-// GET - Verificar inspeções próximas e enviar emails
+// GET - Verificar inspeções próximas e enviar emails/notificações
 export async function GET() {
   try {
     const client = await clientPromise;
@@ -22,23 +22,39 @@ export async function GET() {
       emailSent: false
     }).toArray();
     
-    // Contador de emails enviados
-    let emailsSent = 0;
+    // Contador de notificações enviadas
+    let notificationsSent = 0;
     
-    // Enviar emails e atualizar status
+    // Enviar emails/WhatsApp e atualizar status
     for (const vehicle of vehicles) {
       try {
+        // Buscar o usuário para ter os dados de telefone
+        let user = null;
+        if (vehicle.userId) {
+          user = await db.collection("users").findOne({ _id: vehicle.userId });
+        }
+        
+        // Se encontrou o usuário, atualizar o veículo com os dados mais recentes
+        if (user) {
+          vehicle.userName = user.name;
+          vehicle.userEmail = user.email;
+          vehicle.userPhone = user.phone;
+          vehicle.userWhatsapp = user.whatsapp;
+        }
+        
+        // Enviar notificações (email e WhatsApp)
         await sendInspectionReminder(vehicle);
         
+        // Atualizar status do veículo para indicar que as notificações foram enviadas
         await db.collection("vehicles").updateOne(
           { _id: vehicle._id },
           { $set: { emailSent: true, updatedAt: new Date() } }
         );
         
-        emailsSent++;
-      } catch (emailError) {
-        console.error(`Erro ao enviar email para ${vehicle.userEmail}:`, emailError);
-        // Continuar mesmo se um email falhar
+        notificationsSent++;
+      } catch (error) {
+        console.error(`Erro ao enviar notificações para ${vehicle.plate}:`, error);
+        // Continuar mesmo se uma notificação falhar
       }
     }
     
@@ -58,7 +74,7 @@ export async function GET() {
     
     return NextResponse.json({ 
       success: true, 
-      emailsSent,
+      notificationsSent,
       vehiclesUpdated: updateResult.modifiedCount
     });
   } catch (error) {

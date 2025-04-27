@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { validateUser, prepareUserData } from '@/lib/models/user';
 
 // GET - Obter um usuário específico
 export async function GET(request, { params }) {
@@ -34,16 +35,10 @@ export async function PATCH(request, { params }) {
     
     const data = await request.json();
     
-    // Adicionar timestamp de atualização
-    data.updatedAt = new Date();
-    
-    // Remover o _id do objeto de atualização se estiver presente
-    if (data._id) {
-      delete data._id;
-    }
-    
-    // Verificar se está tentando alterar para um email já existente
+    // Validação parcial para atualização (apenas campos fornecidos)
+    const validationErrors = [];
     if (data.email) {
+      // Verificar se está tentando alterar para um email já existente
       const existingUser = await db
         .collection("users")
         .findOne({ 
@@ -59,11 +54,19 @@ export async function PATCH(request, { params }) {
       }
     }
     
+    // Remover o _id do objeto de atualização se estiver presente
+    if (data._id) {
+      delete data._id;
+    }
+    
+    // Preparar dados para atualização
+    const userData = prepareUserData(data);
+    
     const result = await db
       .collection("users")
       .updateOne(
         { _id: new ObjectId(params.id) },
-        { $set: data }
+        { $set: userData }
       );
     
     if (result.matchedCount === 0) {

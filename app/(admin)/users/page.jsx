@@ -1,9 +1,9 @@
-// app/usuarios/page.jsx
+// app/users/page.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, User, Mail, Edit, Trash } from 'lucide-react';
+import { Plus, User, Mail, Edit, Trash, Phone, MessageSquare, Star } from 'lucide-react';
 import Link from 'next/link';
 import UserForm from '@/components/users/UserForm';
 
@@ -39,8 +39,9 @@ export default function UsersPage() {
   
   // Filtrar usuários com base na pesquisa
   const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.phone?.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
   // Adicionar novo usuário
@@ -97,15 +98,12 @@ export default function UsersPage() {
   // Função para atualizar usuário
   const handleUpdateUser = async (userData) => {
     try {
-      const response = await fetch(`/api/users/${userData._id}`, {
+      const response = await fetch(`/api/users/${editingUser._id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: userData.name,
-          email: userData.email
-        }),
+        body: JSON.stringify(userData),
       });
       
       if (response.ok) {
@@ -119,6 +117,40 @@ export default function UsersPage() {
     } catch (error) {
       console.error('Erro ao atualizar utilizador:', error);
       alert(error.message || 'Ocorreu um erro ao atualizar o utilizador');
+    }
+  };
+
+  // Função para testar envio de WhatsApp
+  const handleTestWhatsApp = async (user) => {
+    if (!user.phone && !user.whatsapp) {
+      alert('Este utilizador não tem número de telefone ou WhatsApp definido.');
+      return;
+    }
+
+    const phoneNumber = user.whatsapp || user.phone;
+    
+    try {
+      const response = await fetch('/api/whatsapp/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipient: phoneNumber,
+          message: `Olá ${user.name}, esta é uma mensagem de teste do sistema de gestão de frota.`
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert(`Mensagem enviada com sucesso para ${phoneNumber}`);
+      } else {
+        alert(`Erro ao enviar mensagem: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Erro ao testar WhatsApp:', error);
+      alert('Ocorreu um erro ao enviar a mensagem de teste');
     }
   };
   
@@ -172,8 +204,17 @@ export default function UsersPage() {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Email
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Telefone
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    WhatsApp
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Gestor Principal
+                  </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Veículos Atribuídos
+                    Veículos
                   </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ações
@@ -199,6 +240,33 @@ export default function UsersPage() {
                         {user.email}
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.phone ? (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Phone className="mr-2" size={16} />
+                          {user.phone}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Não definido</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.whatsapp ? (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <MessageSquare className="mr-2" size={16} />
+                          {user.whatsapp}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Igual ao telefone</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {user.isPrimaryManager ? (
+                        <Star className="inline-block text-yellow-500" size={20} />
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link 
                         href={`/veiculos?userId=${user._id}`}
@@ -223,6 +291,15 @@ export default function UsersPage() {
                         >
                           <Trash size={16} />
                         </button>
+                        {(user.phone || user.whatsapp) && (
+                          <button 
+                            className="text-green-600 hover:text-green-900"
+                            onClick={() => handleTestWhatsApp(user)}
+                            title="Testar WhatsApp"
+                          >
+                            <MessageSquare size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -230,7 +307,7 @@ export default function UsersPage() {
                 
                 {filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                       Nenhum utilizador encontrado
                     </td>
                   </tr>
@@ -245,56 +322,12 @@ export default function UsersPage() {
       {editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">Editar Utilizador</h3>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleUpdateUser(editingUser);
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block mb-1">Nome *</label>
-                  <input 
-                    type="text" 
-                    className="w-full p-2 border rounded"
-                    value={editingUser.name}
-                    onChange={(e) => setEditingUser({
-                      ...editingUser,
-                      name: e.target.value
-                    })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Email *</label>
-                  <input 
-                    type="email" 
-                    className="w-full p-2 border rounded"
-                    value={editingUser.email}
-                    onChange={(e) => setEditingUser({
-                      ...editingUser,
-                      email: e.target.value
-                    })}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end mt-6 space-x-3">
-                <Button 
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingUser(null)}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit"
-                >
-                  Atualizar
-                </Button>
-              </div>
-            </form>
+            <UserForm 
+              initialData={editingUser}
+              onSubmit={handleUpdateUser}
+              onCancel={() => setEditingUser(null)}
+              isEditing={true}
+            />
           </div>
         </div>
       )}

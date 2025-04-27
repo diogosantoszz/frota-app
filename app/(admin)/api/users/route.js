@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
+import { validateUser, prepareUserData } from '@/lib/models/user';
 
 // GET - Obter todos os usuários
 export async function GET() {
@@ -26,6 +27,15 @@ export async function POST(request) {
     
     const data = await request.json();
     
+    // Validar dados do usuário
+    const validationErrors = validateUser(data);
+    if (validationErrors.length > 0) {
+      return NextResponse.json({ 
+        error: "Dados inválidos", 
+        validationErrors 
+      }, { status: 400 });
+    }
+    
     // Verificar se o email já existe
     const existingUser = await db
       .collection("users")
@@ -38,15 +48,14 @@ export async function POST(request) {
       );
     }
     
-    // Adicionar timestamps
-    data.createdAt = new Date();
-    data.updatedAt = new Date();
+    // Preparar dados do usuário
+    const userData = prepareUserData(data, true);
     
-    const result = await db.collection("users").insertOne(data);
+    const result = await db.collection("users").insertOne(userData);
     
     return NextResponse.json({ 
       _id: result.insertedId,
-      ...data 
+      ...userData 
     }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

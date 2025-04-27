@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { sendTaskNotification } from '@/lib/email-service';
 
 // GET - Obter todas as tarefas
 export async function GET(request) {
@@ -73,7 +74,21 @@ export async function POST(request) {
     data.createdAt = new Date();
     data.updatedAt = new Date();
     
+    // Inserir a tarefa
     const result = await db.collection("tasks").insertOne(data);
+    
+    // Buscar o veículo para enviar notificação
+    const vehicle = await db.collection("vehicles").findOne({ _id: new ObjectId(data.vehicleId) });
+    
+    // Se temos o veículo, enviar notificação sobre a nova tarefa
+    if (vehicle) {
+      try {
+        await sendTaskNotification({ ...data, _id: result.insertedId }, vehicle);
+      } catch (notificationError) {
+        console.error('Erro ao enviar notificação de tarefa:', notificationError);
+        // Não interromper o fluxo se a notificação falhar
+      }
+    }
     
     return NextResponse.json({ 
       _id: result.insertedId,
