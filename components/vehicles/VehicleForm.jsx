@@ -242,16 +242,17 @@ export default function VehicleForm({ onSubmit, onCancel, initialData = null, is
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1">Data da Última Inspeção (opcional)</label>
+              <label className="block text-sm font-medium mb-1">Data da Última Inspeção</label>
               <input 
                 type="date" 
                 name="lastInspection"
                 className="w-full p-2 border rounded"
                 value={formData.lastInspection}
                 onChange={handleChange}
+                placeholder="Data da última inspeção"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Se não informada, será calculada automaticamente baseada na data da primeira matrícula
+                Definir esta data atualizará automaticamente o status para "confirmada"
               </p>
             </div>
             

@@ -28,6 +28,8 @@ export async function GET(request, { params }) {
 }
 
 // PATCH - Atualizar um veículo
+// Modificação na rota PATCH de veículos
+// Modificação na rota PATCH de veículos para considerar a isenção nos primeiros 4 anos
 export async function PATCH(request, { params }) {
   try {
     const client = await clientPromise;
@@ -43,7 +45,36 @@ export async function PATCH(request, { params }) {
       delete data._id;
     }
     
-    // Verificar se é uma atualização de inspeção confirmada
+    // Obter o veículo atual para ter informações completas
+    const currentVehicle = await db
+      .collection("vehicles")
+      .findOne({ _id: new ObjectId(params.id) });
+    
+    if (currentVehicle) {
+      // Verificar se o veículo está nos primeiros 4 anos (isento)
+      const firstRegDate = data.firstRegistrationDate 
+        ? new Date(data.firstRegistrationDate) 
+        : new Date(currentVehicle.firstRegistrationDate);
+      
+      const today = new Date();
+      const yearsSinceReg = today.getFullYear() - firstRegDate.getFullYear();
+      
+      // Se estiver nos primeiros 4 anos, definir como confirmada
+      if (yearsSinceReg < 4) {
+        data.inspectionStatus = "confirmada";
+      }
+      // Se tiver última inspeção definida, também marcar como confirmada
+      else if (data.lastInspection) {
+        data.inspectionStatus = "confirmada";
+        
+        // Se a quilometragem da última inspeção não foi informada, usar a atual
+        if (!data.lastInspectionMileage && data.currentMileage) {
+          data.lastInspectionMileage = data.currentMileage;
+        }
+      }
+    }
+    
+    // Verificar se é uma atualização de inspeção confirmada (código original)
     if (data.inspectionStatus === "confirmada") {
       // Se for uma confirmação de inspeção, registrar a quilometragem atual como a quilometragem da inspeção
       if (data.currentMileage && !data.lastInspectionMileage) {

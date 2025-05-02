@@ -22,6 +22,7 @@ export async function GET() {
 }
 
 // POST - Adicionar novo veículo
+// Modificação na rota POST de veículos para considerar a isenção nos primeiros 4 anos
 export async function POST(request) {
   try {
     const client = await clientPromise;
@@ -60,8 +61,20 @@ export async function POST(request) {
       data.lastInspection = new Date(data.lastInspection);
     }
     
+    // Verificar se está nos primeiros 4 anos (isento)
+    const firstRegDate = new Date(data.firstRegistrationDate);
+    const today = new Date();
+    const yearsSinceReg = today.getFullYear() - firstRegDate.getFullYear();
+    
     // Definir valores padrão
-    data.inspectionStatus = data.inspectionStatus || 'pendente';
+    if (yearsSinceReg < 4) {
+      // Se estiver nos primeiros 4 anos, definir como confirmada
+      data.inspectionStatus = "confirmada";
+    } else {
+      // Caso contrário, usar o valor fornecido ou o padrão "pendente"
+      data.inspectionStatus = data.inspectionStatus || 'pendente';
+    }
+    
     data.emailSent = data.emailSent || false;
     
     // Definir valores padrão para novos campos
