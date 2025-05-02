@@ -29,6 +29,7 @@ const StatCard = ({ icon, title, value, bgColor = "bg-blue-50" }) => {
 };
 
 // Componente de Lista de Inspeções
+// Componente de Lista de Inspeções (CORRIGIDO)
 const InspectionsList = ({ 
   title,
   description, 
@@ -68,7 +69,7 @@ const InspectionsList = ({
                 <th className="text-left py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Responsável</th>
                 <th className="text-left py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                 <th className="text-left py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Dias</th>
-                <th className="text-left py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                <th className="text-left py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status/Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -88,28 +89,34 @@ const InspectionsList = ({
                     {Math.abs(Math.floor((new Date(vehicle.nextInspection) - new Date()) / (1000 * 60 * 60 * 24)))}
                   </td>
                   <td className="py-3 text-sm">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button
-                        variant={isOverdue ? "destructive" : "primary"}
-                        size="sm"
-                        onClick={() => onConfirmInspection(vehicle._id)}
-                        title="Confirmar realização da inspeção"
-                        className="w-full sm:w-auto"
-                      >
-                        Confirmar
-                      </Button>
-                      {!vehicle.emailSent && (
+                    {vehicle.inspectionStatus === "confirmada" ? (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                        Confirmada
+                      </span>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button
-                          variant="outline"
+                          variant={isOverdue ? "destructive" : "primary"}
                           size="sm"
-                          onClick={() => onSendEmail(vehicle._id)}
-                          title="Enviar email de lembrete"
+                          onClick={() => onConfirmInspection(vehicle._id)}
+                          title="Confirmar realização da inspeção"
                           className="w-full sm:w-auto"
                         >
-                          Lembrar
+                          Confirmar
                         </Button>
-                      )}
-                    </div>
+                        {!vehicle.emailSent && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onSendEmail(vehicle._id)}
+                            title="Enviar email de lembrete"
+                            className="w-full sm:w-auto"
+                          >
+                            Lembrar
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -157,7 +164,7 @@ export default function Dashboard() {
   }, []);
   
   // Filtrar veículos por status
-  const upcomingInspections = vehicles.filter(vehicle => {
+  const upcomingInspections30Days = vehicles.filter(vehicle => {
     const nextInspection = new Date(vehicle.nextInspection);
     const today = new Date();
     const thirtyDaysLater = new Date();
@@ -165,6 +172,20 @@ export default function Dashboard() {
     return nextInspection >= today && 
            nextInspection <= thirtyDaysLater && 
            vehicle.inspectionStatus === "pendente";
+  });
+  
+  // Inspeções entre 31-90 dias
+  const inspectionsBetween31And90Days = vehicles.filter(vehicle => {
+    const nextInspection = new Date(vehicle.nextInspection);
+    const today = new Date();
+    const thirtyDaysLater = new Date(today);
+    thirtyDaysLater.setDate(today.getDate() + 30);
+    const ninetyDaysLater = new Date(today);
+    ninetyDaysLater.setDate(today.getDate() + 90);
+    
+    // Incluir todos os veículos com próxima inspeção entre 31 e 90 dias,
+    // independentemente do status (pendente ou confirmada)
+    return nextInspection > thirtyDaysLater && nextInspection <= ninetyDaysLater;
   });
   
   const overdueInspections = vehicles.filter(vehicle => {
@@ -242,7 +263,6 @@ export default function Dashboard() {
       console.error('Erro ao confirmar inspeção:', error);
     }
   };
-  
   
   const handleSendEmail = async (vehicleId) => {
     try {
@@ -402,7 +422,7 @@ export default function Dashboard() {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Cards de estatísticas existentes */}
+        {/* Cards de estatísticas existentes - mantidos como estavam originalmente */}
         <StatCard 
           icon={<Car className="h-5 w-5 text-blue-600" />} 
           title="Total de Veículos" 
@@ -413,7 +433,7 @@ export default function Dashboard() {
         <StatCard 
           icon={<Clock className="h-5 w-5 text-yellow-600" />} 
           title="Inspeções Próximas" 
-          value={upcomingInspections.length} 
+          value={upcomingInspections30Days.length} 
           bgColor="bg-yellow-50" 
         />
         
@@ -482,18 +502,31 @@ export default function Dashboard() {
         />
       )}
       
-      {upcomingInspections.length > 0 && (
+      {upcomingInspections30Days.length > 0 && (
         <InspectionsList 
           title="Inspeções nos Próximos 30 Dias" 
           description="Veículos com inspeções programadas para breve."
-          vehicles={upcomingInspections}
+          vehicles={upcomingInspections30Days}
+          type="upcoming"
+          onConfirmInspection={handleConfirmInspection}
+          onSendEmail={handleSendEmail}
+        />
+      )}
+      
+      {/* Nova seção para inspeções entre 31 e 90 dias */}
+      {inspectionsBetween31And90Days.length > 0 && (
+        <InspectionsList 
+          title="Inspeções entre 31-90 Dias" 
+          description="Veículos com inspeções programadas para os próximos meses."
+          vehicles={inspectionsBetween31And90Days}
           type="upcoming"
           onConfirmInspection={handleConfirmInspection}
           onSendEmail={handleSendEmail}
         />
       )}
 
-      {overdueInspections.length === 0 && upcomingInspections.length === 0 && tasks.length === 0 && (
+      {overdueInspections.length === 0 && upcomingInspections30Days.length === 0 && 
+       inspectionsBetween31And90Days.length === 0 && tasks.length === 0 && (
         <Card className="mt-6">
           <CardContent className="p-6">
             <div className="text-center py-8">
